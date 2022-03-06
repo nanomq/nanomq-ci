@@ -1,2 +1,2 @@
-# mqtt-func-test
+# nanomq-ci
 mqtt func test.
