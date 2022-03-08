@@ -18,7 +18,7 @@
 #include <nng/supplemental/util/platform.h>
 
 
-#define TOPIC_CNT 1000
+#define TOPIC_CNT 100
 #define TOPIC_LEN 100
 
 static size_t nwork = 32;
@@ -54,7 +54,7 @@ int check_recv(nng_msg *msg)
 	// TODO update assert_str
 	if (!assert_str((char*) payload, topic, topic_len)) {
 		acnt++;
-		log_info("PASS RANDOM TEST [%d / %d]", acnt, TOPIC_CNT);
+		// log_info("PASS RANDOM TEST [%d / %d]", acnt, TOPIC_CNT);
 	} else {
 		log_err("assert_str failed");
 		return -1;
@@ -171,11 +171,6 @@ client_publish(nng_socket sock, const char *topic, uint8_t *payload,
 	    pubmsg, (uint8_t *) payload, payload_len);
 	nng_mqtt_msg_set_publish_topic(pubmsg, topic);
 
-	if (verbose) {
-		uint8_t print[1024] = { 0 };
-		nng_mqtt_msg_dump(pubmsg, print, 1024, true);
-		printf("%s\n", print);
-	}
 
 	// printf("Publishing '%s' to '%s' ...\n", payload, topic);
 	if ((rv = nng_sendmsg(sock, pubmsg, NNG_FLAG_NONBLOCK)) != 0) {
@@ -183,6 +178,44 @@ client_publish(nng_socket sock, const char *topic, uint8_t *payload,
 	}
 
 	return rv;
+}
+
+void test_random(nng_socket sock)
+{
+	while (!is_sub_finished) {}
+	int i = 0;
+	while (acnt < TOPIC_CNT && i++ < 5) {
+		acnt = 0;
+		// In case receive last test publish message.
+		nng_msleep(TOPIC_CNT);
+		for (size_t j = 0 ; j < TOPIC_CNT; j++) {
+			client_publish(sock, topic_que[j], (uint8_t*) topic_que[j], TOPIC_LEN, 0, false);
+		}
+
+		for (size_t k = 0; k < TOPIC_CNT; k++) {
+			nng_msleep(10);
+		}
+
+		if (acnt == TOPIC_CNT) {
+			log_info("RANDOM TOPIC TEST ALL %d/%d PASSED!", acnt, TOPIC_CNT);
+			return;
+		} else {
+			log_info("RANDOM TOPIC TEST FINISHED %d/%d! TRY IT AGAIN!", acnt, TOPIC_CNT);
+		}
+	}
+
+	log_info("RANDOM TOPIC TEST FAILED, FINISHED %d/%d!", acnt, TOPIC_CNT);
+	// TODO unsub all
+	is_sub_finished = false;
+}
+
+void test_wildcard(nng_socket sock)
+{
+	while (!is_sub_finished) {}
+	int i = 0;
+	while (true) {};
+
+
 }
 
 int
@@ -223,33 +256,16 @@ client(const char *url)
 		sub_cb(works[i]);
 	}
 
-	while (!is_sub_finished) {}
-	nng_msleep(TOPIC_CNT); 
-	int cnt = 0;
-	for (size_t j = 0 ; j < TOPIC_CNT; j++) {
-		cnt++;
-		client_publish(sock, topic_que[j], (uint8_t*) topic_que[j], TOPIC_LEN, 0, false);
-	}
 
-	log_info("cnt: %d", cnt);
+	test_random(sock);
+	// test_wildcard(sock);
 
+	return 0;
 
-	// TODO Here we will wait this group test finished.
-	for (;;) {
-		nng_msleep(3600000);
-	}
-
-	// disconnect
 }
 
-
-int
-main(int argc, char **argv)
+int init_test()
 {
-	int    rc;
-	char url[64]        = { 0 };
-
-
 	srand(time(NULL));
 	topic_que = (char**) malloc(sizeof(char*) * TOPIC_CNT);
 	if (topic_que == NULL) {
@@ -277,9 +293,24 @@ main(int argc, char **argv)
 	}
 #endif
 
+	return 0;
+}
+
+int
+main(int argc, char **argv)
+{
+	int    rc;
+	char url[64]        = { 0 };
+
 	nnc_opt_t * opt = nnc_get_opt(argc, argv);
 	sprintf(url, "mqtt-tcp://%s:%d", opt->host, opt->port);
+
+	if ((rc = init_test()) != 0) {
+		log_err("init test failed!");
+	}
+
 	client(url);
 
+	// TODO fini_test();
 	return 0;
 }
