@@ -228,3 +228,83 @@ int assert_str(const char *s1, const char *s2, size_t len)
         return -1;
     }
 }
+
+bool
+check_wildcard(const char *w, const char *n)
+{
+	bool result = true;
+    bool hashtag = false;
+
+	if (strcmp(w, n) == 0) {
+		return true;
+	}
+
+	char *p1 = NULL, *p2 = NULL;
+
+	char *w_str = strdup(w);
+	char *n_str  = strdup(n);
+
+	char *w_token = strtok_r(w_str, "/", &p1);
+	char *n_token  = strtok_r(n_str, "/", &p2);
+
+    // log_info("%s, %s", w_token, n_token);
+	while (w_token != NULL && n_token != NULL) {
+        // log_info("%s, %s", w_token, n_token);
+		if (strcmp(w_token, n_token) != 0) {
+			if (strcmp(w_token, "#") == 0) {
+				hashtag = true;
+				break;
+			} else if (strcmp(w_token, "+") != 0) {
+				result = false;
+				break;
+			}
+		}
+		w_token = strtok_r(NULL, "/", &p1);
+		n_token  = strtok_r(NULL, "/", &p2);
+	}
+
+	if (w_token && strcmp(w_token, "#") == 0) {
+		hashtag = true;
+    }
+    if (hashtag) {
+        result = true;
+    } else {
+        if (w_token || n_token) {
+            result = false;
+        }
+    }
+
+
+	free(n_str);
+	free(w_str);
+	return result;
+}
+
+void test_wildcard_topic_check()
+{
+    char w1[] = "abc/+/+/d";
+    char n1[] = "abc/bbbb/ccccc/d";
+
+    char w2[] = "abc/bbb/ccc/#";
+    char n2[] = "abc";
+     
+    char w3[] = "BQVQesBH2RwZMuFULTszsXLZjlMk7LUexm8/+/YlQDhWx81j/#";
+    char n3[] = "BQVQesBH2RwZMuFULTszsXLZjlMk7LUexm8/";
+
+    char w4[] = "/#";
+    char n4[] = "//";
+
+    char w5[] = "bxfgapN/+/tamCy16hxVpfjzxJnXWRQ/W8DFDxp1UzSX0s4a/#";
+    char n5[] = "bxfgapN/W/tamCy16hxVpfjzxJnXWRQ/W8DFDxp1UzSX0s4a//";
+    
+
+
+    check(check_wildcard(w1, n1), "check failed!");
+    check(!check_wildcard(w2, n2), "check failed!");
+    check(!check_wildcard(w3, n3), "check failed!");
+    check(check_wildcard(w4, n4), "check failed!");
+    check(check_wildcard(w5, n5), "check failed!");
+
+error:
+    return;
+}
