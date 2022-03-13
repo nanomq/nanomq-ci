@@ -16,6 +16,8 @@ int mk_rnd_2str_wildcard(size_t len, char *rnd_str, char *n_rnd_str);
 int mk_rnd_wildcard_2str_que(size_t size, size_t len, char **wildcard_que, char **normal_que);
 
 int assert_str(const char *s1, const char *s2, size_t len);
+bool check_wildcard(const char *w, const char *n);
 
+void test_wildcard_topic_check(void);
 
 #endif
