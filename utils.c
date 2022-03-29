@@ -296,6 +296,9 @@ void test_wildcard_topic_check()
 
     char w5[] = "bxfgapN/+/tamCy16hxVpfjzxJnXWRQ/W8DFDxp1UzSX0s4a/#";
     char n5[] = "bxfgapN/W/tamCy16hxVpfjzxJnXWRQ/W8DFDxp1UzSX0s4a//";
+
+    char w6[] = "topic/#";
+    char n6[] = "topic";
     
 
 
@@ -304,7 +307,41 @@ void test_wildcard_topic_check()
     check(!check_wildcard(w3, n3), "check failed!");
     check(check_wildcard(w4, n4), "check failed!");
     check(check_wildcard(w5, n5), "check failed!");
+    check(!check_wildcard(w6, n5), "check failed!");
 
 error:
     return;
+}
+
+char **str_arr_alloc(size_t size, size_t len)
+{
+	char **str_arr = (char**) malloc(sizeof(char*) * size);
+	if (str_arr == NULL) {
+		log_err("memory alloc error");
+		return NULL;
+	}
+
+	for (size_t i = 0; i < size; i++) {
+		str_arr[i] = (char*) malloc(sizeof(char) * len);
+		if (str_arr[i] == NULL) {
+			log_err("memory alloc error");
+			goto exit;
+
+		}
+	}
+
+
+	return str_arr;
+
+exit:
+	if (str_arr) {
+		for (size_t i = 0; i < size; i++) {
+			if (str_arr[i]) {
+				free(str_arr[i]);
+			}
+		}
+		free(str_arr);
+	}
+
+	return NULL;
 }
