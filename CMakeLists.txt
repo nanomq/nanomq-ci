@@ -18,7 +18,7 @@ endif()
 
 add_subdirectory(nng)
 
-add_executable(nanomq-ci main.c utils.c nnc_opt.c)
+add_executable(nanomq-ci main.c utils.c nnc_opt.c nnc_test.c)
 target_link_libraries(nanomq-ci nng)
 add_dependencies(nanomq-ci nng)
 
