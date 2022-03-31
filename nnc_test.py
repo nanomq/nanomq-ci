@@ -2,6 +2,11 @@ from cgi import test
 from re import T
 import subprocess
 import shlex
+import os
+import paho.mqtt.client as mqtt
+from multiprocessing import Process
+import time
+
 
 def test_clean_session():
     clean_session_cmd = shlex.split("mosquitto_sub -t topic -h iot-platform.cloud -p 6301")
@@ -13,7 +18,7 @@ def test_clean_session():
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
     try:
-        process.wait(1)
+        process.wait(2)
     except:
         process.terminate()
         # print('client finished')
@@ -65,9 +70,52 @@ def test_retain():
                                universal_newlines=True)
 
 
+def test_v4_v5():
+    sub_cmd_v4 = shlex.split("mosquitto_sub -t topic -h iot-platform.cloud -p 6301 -V mqttv311")
+    sub_cmd_v5 = shlex.split("mosquitto_sub -t topic -h iot-platform.cloud -p 6301 -V 5")
+    pub_cmd_v4 = shlex.split("mosquitto_pub -m message  -t topic -h iot-platform.cloud -p 6301 -V mqttv311")
+    pub_cmd_v5 = shlex.split("mosquitto_pub -m message  -t topic -h iot-platform.cloud -p 6301 -V 5")
 
-test_clean_session()
-test_retain()
+    process1 = subprocess.Popen(sub_cmd_v4,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    time.sleep(1)
+    process2 = subprocess.Popen(pub_cmd_v5, 
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    while True:
+        output = process1.stdout.readline()
+        if output.strip() == 'message':
+            print("pass")
+            process1.terminate()
+            break
+
+    process3 = subprocess.Popen(sub_cmd_v5, 
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    time.sleep(1)
+    process4 = subprocess.Popen(pub_cmd_v4, 
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    while True:
+        output = process3.stdout.readline()
+        if output.strip() == 'message':
+            print("pass")
+            process3.terminate()
+            break
+            
+
+
+
+
+if __name__=='__main__':
+    test_v4_v5()
+    test_clean_session()
+    test_retain()
 
 
 
