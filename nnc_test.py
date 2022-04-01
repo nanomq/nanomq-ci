@@ -71,9 +71,9 @@ def test_retain():
 
 
 def test_v4_v5():
-    sub_cmd_v4 = shlex.split("mosquitto_sub -t topic -h iot-platform.cloud -p 6301 -V mqttv311")
+    sub_cmd_v4 = shlex.split("mosquitto_sub -t topic -h iot-platform.cloud -p 6301 -V 311")
     sub_cmd_v5 = shlex.split("mosquitto_sub -t topic -h iot-platform.cloud -p 6301 -V 5")
-    pub_cmd_v4 = shlex.split("mosquitto_pub -m message  -t topic -h iot-platform.cloud -p 6301 -V mqttv311")
+    pub_cmd_v4 = shlex.split("mosquitto_pub -m message  -t topic -h iot-platform.cloud -p 6301 -V 311")
     pub_cmd_v5 = shlex.split("mosquitto_pub -m message  -t topic -h iot-platform.cloud -p 6301 -V 5")
 
     process1 = subprocess.Popen(sub_cmd_v4,
@@ -109,10 +109,32 @@ def test_v4_v5():
             break
             
 
+def test_will_topic():
+    pub_cmd = shlex.split("mosquitto_pub -h iot-platform.cloud -p 6301 -t msg -d -l --will-topic will_topic --will-payload will_payload")
+    sub_cmd = shlex.split("mosquitto_sub -t will_topic -h iot-platform.cloud -p 6301")
+
+    process1 = subprocess.Popen(sub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    time.sleep(1)
+    process2 = subprocess.Popen(pub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    time.sleep(1)
+    process2.terminate()
+    process2.kill()
+    while True:
+        output = process1.stdout.readline()
+        if output.strip() == 'will_payload':
+            process1.terminate()
+            break
+
 
 
 
 if __name__=='__main__':
+    test_will_topic()
     test_v4_v5()
     test_clean_session()
     test_retain()
