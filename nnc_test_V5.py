@@ -126,9 +126,28 @@ def test_topic_alias():
             cnt += 1
             if cnt == 10:
                 process1.terminate()
-                print("pass")
                 break
 
 
+
+def test_user_property():
+    pub_cmd = shlex.split("mosquitto_pub -h iot-platform.cloud -p 6301 -t topic_test -m aaaa -V 5 -D Publish user-property user property")
+    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -h iot-platform.cloud -p 6301 -V 5 -F %P")
+
+    process1 = subprocess.Popen(sub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    time.sleep(1)
+    process2 = subprocess.Popen(pub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    while True:
+        output = process1.stdout.readline()
+        if output.strip() == 'user:property':
+            process1.terminate()
+            break
+
+test_user_property()
 test_shared_subscription()
 test_topic_alias()
