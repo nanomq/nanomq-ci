@@ -34,7 +34,7 @@ def wait_message(process, route):
 def test_shared_subscription():
     pub_cmd = shlex.split("mosquitto_pub -t topic_share -V 5 -m message -h localhost -p 1883 -d --repeat 10")
     sub_cmd = shlex.split("mosquitto_sub -t '$share/a/topic_share' -h localhost -p 1883")
-    # sub_cmd_shared = shlex.split("mosquitto_sub -t '$share/b/topic_share' -h localhost -p 1883")
+    sub_cmd_shared = shlex.split("mosquitto_sub -t '$share/b/topic_share' -h localhost -p 1883")
     sub_cmd_non_shared = shlex.split("mosquitto_sub -t topic_share -h localhost -p 1883")
     process1 = subprocess.Popen(sub_cmd,
                                stdout=subprocess.PIPE,
@@ -48,9 +48,9 @@ def test_shared_subscription():
     process4 = subprocess.Popen(sub_cmd_non_shared,
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
-    # process5 = subprocess.Popen(sub_cmd_shared,
-    #                            stdout=subprocess.PIPE,
-    #                            universal_newlines=True)
+    process5 = subprocess.Popen(sub_cmd_shared,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
     time.sleep(2)
     process6 = subprocess.Popen(pub_cmd,
                                stdout=subprocess.PIPE,
@@ -60,19 +60,19 @@ def test_shared_subscription():
     t2 = threading.Thread(target=wait_message, args=(process2, 1))
     t3 = threading.Thread(target=wait_message, args=(process3, 1))
     t4 = threading.Thread(target=wait_message, args=(process4, 2))
-    # t5 = threading.Thread(target=wait_message, args=(process5, 3))
+    t5 = threading.Thread(target=wait_message, args=(process5, 3))
 
     t1.daemon = True
     t2.daemon = True
     t3.daemon = True
     t4.daemon = True
-    # t5.daemon = True
+    t5.daemon = True
 
     t1.start()
     t2.start()
     t3.start()
     t4.start()
-    # t5.start()
+    t5.start()
     
     times = 0
     while True:
@@ -88,7 +88,7 @@ def test_shared_subscription():
         time.sleep(1)
         if times == 5:
             print("Shared subscription test failed!")
-            break
+            return
     
     times = 0
     while True:
@@ -98,21 +98,26 @@ def test_shared_subscription():
             process4.terminate()
             break
         lock.release()
+        times += 1
         time.sleep(1)
         if times == 5:
             print("Shared subscription test failed!")
-            break
+            return
     
-    # while True:
-    #     lock.acquire()
-    #     if shared_cnt == 10:
-    #         lock.release()
-    #         print("pass")
-    #         process5.terminate()
-    #         break
-    #     lock.release()
-    #     print(shared_cnt)
-    #     time.sleep(1)
+    times = 0
+    while True:
+        lock.acquire()
+        if shared_cnt == 10:
+            lock.release()
+            print("pass")
+            process5.terminate()
+            break
+        lock.release()
+        times += 1
+        time.sleep(1)
+        if times == 5:
+            print("Shared subscription test failed!")
+            return
 
     print("Shared subscription test passed!")
 
