@@ -195,8 +195,38 @@ def test_session_expiry():
     else:
         print("failed")
 
+def test_message_expiry():
+    pub_cmd = shlex.split("mosquitto_pub -h iot-platform.cloud -p 6301 -t topic_test -m message -V 5 -q 1 -D publish message-expiry-interval 3 -r")
+    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -h iot-platform.cloud -p 6301 -q 1 -V 5")
+
+    process1 = subprocess.Popen(pub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    time.sleep(1)
+    process2 = subprocess.Popen(sub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    while True:
+        output = process2.stdout.readline()
+        if output.strip() == 'message':
+            process2.terminate()
+            break
+
+    time.sleep(3)
+    cnt = Value('i', 0)
+    process2 = Process(target=cnt_message, args=(sub_cmd, cnt,))
+    process2.start()
+    time.sleep(2)
+    process2.terminate()
+    if cnt.value == 0:
+        print("pass")
+    else:
+        print("failed")
+
 
 if __name__ == '__main__':
+    test_message_expiry()
     test_session_expiry()
     test_user_property()
     test_shared_subscription()
