@@ -109,7 +109,6 @@ def test_shared_subscription():
         lock.acquire()
         if shared_cnt == 10:
             lock.release()
-            print("pass")
             process5.terminate()
             break
         lock.release()
@@ -122,36 +121,38 @@ def test_shared_subscription():
     print("Shared subscription test passed!")
 
 
-def cnt_message(cmd, n):
+def cnt_message(cmd, n, message):
     process = subprocess.Popen(cmd,
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
     while True:
         output = process.stdout.readline()
-        if output.strip() == 'message':
+        if output.strip() == message:
             n.value += 1
 
 def test_topic_alias():
     pub_cmd = shlex.split("mosquitto_pub -t topic -V 5 -m message -D Publish topic-alias 10 -h localhost -p 1883 -d --repeat 10")
     sub_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883")
 
-    process1 = subprocess.Popen(sub_cmd,
-                               stdout=subprocess.PIPE,
-                               universal_newlines=True)
-
+    cnt = Value('i', 0)
+    process1 = Process(target=cnt_message, args=(sub_cmd, cnt, "message"))
+    process1.start()
     time.sleep(1)
     process2 = subprocess.Popen(pub_cmd,
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
 
-    cnt = 0
+    times = 0
     while True:
-        output = process1.stdout.readline()
-        if output.strip() == 'message':
-            cnt += 1
-            if cnt == 10:
-                process1.terminate()
-                break
+        if cnt.value == 10:
+            process1.terminate()
+            break
+        time.sleep(1)
+        times += 1
+        if times == 5:
+            print("Topic alias test failed!")
+            process1.terminate()
+            return
 
     print("Topic alias test passed!")
 
@@ -160,23 +161,27 @@ def test_user_property():
     pub_cmd = shlex.split("mosquitto_pub -h localhost -p 1883 -t topic_test -m aaaa -V 5 -D Publish user-property user property")
     sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -h localhost -p 1883 -V 5 -F %P")
 
-    process1 = subprocess.Popen(sub_cmd,
-                               stdout=subprocess.PIPE,
-                               universal_newlines=True)
+    cnt = Value('i', 0)
+    process1 = Process(target=cnt_message, args=(sub_cmd, cnt, "user:property"))
+    process1.start()
 
     time.sleep(1)
     process2 = subprocess.Popen(pub_cmd,
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
+
+    times = 0
     while True:
-        output = process1.stdout.readline()
-        if output.strip() == 'user:property':
+        if cnt.value == 1:
             process1.terminate()
             break
-
+        time.sleep(1)
+        times += 1
+        if times == 5:
+            print("User property test failed!")
+            process1.terminate()
+            return
     print("User property test passed!")
-
-
 
 def test_session_expiry():
     pub_cmd = shlex.split("mosquitto_pub -h localhost -p 1883 -t topic_test -m message -V 5 -q 1")
@@ -192,10 +197,9 @@ def test_session_expiry():
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
     cnt = Value('i', 0)
-    process3 = Process(target=cnt_message, args=(sub_cmd, cnt,))
+    process3 = Process(target=cnt_message, args=(sub_cmd, cnt, "message"))
     process3.start()
     time.sleep(4)
-    # process1.terminate()
     process3.terminate()
     if cnt.value != 1:
         print("failed")
@@ -204,7 +208,7 @@ def test_session_expiry():
     process2 = subprocess.Popen(pub_cmd,
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
-    process3 = Process(target=cnt_message, args=(sub_cmd, cnt,))
+    process3 = Process(target=cnt_message, args=(sub_cmd, cnt, "message"))
     process3.start()
     process3.terminate()
     time.sleep(2)
@@ -222,29 +226,24 @@ def test_message_expiry():
                                universal_newlines=True)
 
     time.sleep(1)
-    process2 = subprocess.Popen(sub_cmd,
-                               stdout=subprocess.PIPE,
-                               universal_newlines=True)
-    while True:
-        output = process2.stdout.readline()
-        if output.strip() == 'message':
-            process2.terminate()
-            break
-
-    time.sleep(3)
     cnt = Value('i', 0)
-    process2 = Process(target=cnt_message, args=(sub_cmd, cnt,))
+    process2 = Process(target=cnt_message, args=(sub_cmd, cnt, "message"))
     process2.start()
     time.sleep(2)
     process2.terminate()
-    if cnt.value == 0:
+    if cnt.value != 1:
+        print("Message expiry interval test failed!")
+        return
+
+    time.sleep(3)
+    process2 = Process(target=cnt_message, args=(sub_cmd, cnt, "message"))
+    process2.start()
+    time.sleep(2)
+    process2.terminate()
+    if cnt.value == 1:
         print("Message expiry interval test passed!")
     else:
         print("Message expiry interval test failed!")
-
-
-
-
 
 if __name__ == '__main__':
     test_message_expiry()
