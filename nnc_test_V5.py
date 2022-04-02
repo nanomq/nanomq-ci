@@ -1,11 +1,12 @@
 from cgi import test
+from curses import termattrs
 from operator import is_
 from re import S, T
 import subprocess
 import shlex
 import os
 import paho.mqtt.client as mqtt
-from multiprocessing import Process
+from multiprocessing import Process, Value
 import time
 import threading
 
@@ -148,6 +149,55 @@ def test_user_property():
             process1.terminate()
             break
 
-test_user_property()
-test_shared_subscription()
-test_topic_alias()
+
+
+def cnt_message(cmd, n):
+    process = subprocess.Popen(cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    while True:
+        output = process.stdout.readline()
+        if output.strip() == 'message':
+            n.value += 1
+
+def test_session_expiry():
+    pub_cmd = shlex.split("mosquitto_pub -h iot-platform.cloud -p 6301 -t topic_test -m message -V 5 -q 1")
+    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -h iot-platform.cloud -p 6301  --id client -x 5 -c -q 1 -V 5")
+
+    process1 = subprocess.Popen(sub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    time.sleep(1)
+    process1.terminate()
+    process2 = subprocess.Popen(pub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    cnt = Value('i', 0)
+    process3 = Process(target=cnt_message, args=(sub_cmd, cnt,))
+    process3.start()
+    time.sleep(4)
+    # process1.terminate()
+    process3.terminate()
+    if cnt.value != 1:
+        print("failed")
+        return
+
+    process2 = subprocess.Popen(pub_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    process3 = Process(target=cnt_message, args=(sub_cmd, cnt,))
+    process3.start()
+    process3.terminate()
+    time.sleep(2)
+    if cnt.value == 1:
+        print("pass")
+    else:
+        print("failed")
+
+
+if __name__ == '__main__':
+    test_session_expiry()
+    test_user_property()
+    test_shared_subscription()
+    test_topic_alias()
