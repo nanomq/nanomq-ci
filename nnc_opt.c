@@ -16,6 +16,7 @@ nnc_opt_t *nnc_get_opt(int argc, char **argv)
 		log_err("memory alloc error!");
 		exit(EXIT_FAILURE);
 	}
+	ret->host = NULL;
 
 
 	while ((opt = getopt_long(argc, argv, short_options, long_options,

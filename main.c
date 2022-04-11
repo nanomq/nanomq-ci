@@ -13,6 +13,7 @@ main(int argc, char **argv)
 
 	nnc_opt_t * opt = nnc_get_opt(argc, argv);
 	sprintf(url, "mqtt-tcp://%s:%d", opt->host, opt->port);
+	printf("Connect to url: %s\n", url);
 
 	if ((rc = init_test()) != 0) {
 		log_err("init test failed!");
