@@ -3,6 +3,7 @@
 
 #include <getopt.h>
 #include <stdint.h>
+#include <stddef.h>
 
 
 static char *short_options = "h:p:";
