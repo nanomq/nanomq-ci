@@ -9,11 +9,19 @@ import paho.mqtt.client as mqtt
 from multiprocessing import Process, Value
 import time
 import threading
+import signal
 
 cnt = 0
 non_cnt = 0
 shared_cnt = 0
 lock = threading.Lock()
+
+def clear_subclients():
+    entries = os.popen("pidof mosquitto_sub")
+
+    for line in entries:
+        for pid in line.split():
+            os.kill(int(pid), signal.SIGKILL)
 
 def wait_message(process, route):
     global cnt 
@@ -30,6 +38,24 @@ def wait_message(process, route):
             else:
                 shared_cnt += 1
             lock.release()
+
+def cnt_substr(cmd, n, message):
+    process = subprocess.Popen(cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    while True:
+        output = process.stdout.readline()
+        if message in output:
+            n.value += 1
+
+def cnt_message(cmd, n, message):
+    process = subprocess.Popen(cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    while True:
+        output = process.stdout.readline()
+        if output.strip() == message:
+            n.value += 1
 
 def test_shared_subscription():
     pub_cmd = shlex.split("mosquitto_pub -t topic_share -V 5 -m message -h localhost -p 1883 -d --repeat 10")
@@ -119,16 +145,6 @@ def test_shared_subscription():
             return
 
     print("Shared subscription test passed!")
-
-
-def cnt_message(cmd, n, message):
-    process = subprocess.Popen(cmd,
-                               stdout=subprocess.PIPE,
-                               universal_newlines=True)
-    while True:
-        output = process.stdout.readline()
-        if output.strip() == message:
-            n.value += 1
 
 def test_topic_alias():
     pub_cmd = shlex.split("mosquitto_pub -t topic -V 5 -m message -D Publish topic-alias 10 -h localhost -p 1883 -d --repeat 10")
@@ -245,9 +261,47 @@ def test_message_expiry():
     else:
         print("Message expiry interval test failed!")
 
+def test_retain_as_publish():
+    pub_retain_cmd = shlex.split("mosquitto_pub -t topic -V 5 -m message -d --retain")
+    sub_retain_cmd = shlex.split("mosquitto_sub -t topic -V 5 --retain-as-published -d")
+    sub_common_cmd = shlex.split("mosquitto_sub -t topic -V 5 -d")
+    pub_clean_retain_cmd = shlex.split("mosquitto_pub -t topic -V 5 -m \"\" -d")
+
+    process1 = subprocess.Popen(pub_retain_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+    cnt = Value('i', 0)
+    process2 = Process(target=cnt_substr, args=(sub_common_cmd, cnt, " r0,"))
+    process2.start()
+
+    cnt1 = Value('i', 0)
+    process3 = Process(target=cnt_substr, args=(sub_retain_cmd, cnt1, " r1,"))
+    process3.start()
+
+    time.sleep(1)
+
+    if cnt.value != 1 or cnt1.value != 1:
+        print("Retain As Published test failed!")
+    else:
+        print("Retain As Published test passed!")
+
+    process4 = subprocess.Popen(pub_clean_retain_cmd,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+
+    process1.terminate()
+    process2.terminate()
+    process3.terminate()
+    process4.terminate()
+
+    time.sleep(2)
+    clear_subclients()
+
 if __name__ == '__main__':
     test_message_expiry()
     test_session_expiry()
     test_user_property()
     test_shared_subscription()
     test_topic_alias()
+    test_retain_as_publish()
+
