@@ -17,55 +17,43 @@ def cnt_message(cmd, n, message):
             n.value += 1
 
 def test_clean_session():
-    clean_session_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883")
-    persist_session_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883 -c -i id")
-    pub_cmd = shlex.split("mosquitto_pub -m message  -t topic -h localhost -p 1883")
+    clean_session_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883 -q 1")
+    persist_session_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883 -c -i id -q 1")
+    pub_cmd = shlex.split("mosquitto_pub -m message  -t topic -h localhost -p 1883 -q 1")
 
     # persistence session
     process = subprocess.Popen(persist_session_cmd, 
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
-    try:
-        process.wait(2)
-    except:
-        process.terminate()
-        # print('client finished')
+
+    time.sleep(1)
+    process.terminate()
+    time.sleep(1)
 
     process = subprocess.Popen(pub_cmd, 
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
 
-    # process = subprocess.Popen(persist_session_cmd, 
-    #                            stdout=subprocess.PIPE,
-    #                            universal_newlines=True)
+    time.sleep(1)
+    process.terminate()
+    time.sleep(1)
 
-    # while True:
-    #     output = process.stdout.readline()
-    #     if output.strip() == 'message':
-    #         process.terminate()
-    #         break
-
-    
     cnt = Value('i', 0)
     process = Process(target=cnt_message, args=(persist_session_cmd, cnt, "message"))
     process.start()
+
+    time.sleep(5)
+    process.terminate()
+    if cnt.value == 1:
+        print("clean session test passed!")
+    else:
+        print("clean session test failed!")
+
+    process = Process(target=cnt_message, args=(clean_session_cmd, cnt, "message"))
+    process.start()
+
     time.sleep(1)
     process.terminate()
-
-    process = subprocess.Popen(clean_session_cmd, 
-                               stdout=subprocess.PIPE,
-                               universal_newlines=True)
-    try:
-        process.wait(1)
-    except:
-        process.terminate()
-
-    if cnt.value != 1:
-        print("Clean session test failed!")
-        return
-    
-    print("Clean session test passed!")
-
 
 def test_retain():
     retain_pub_cmd = shlex.split("mosquitto_pub -m message  -t topic -h localhost -p 1883 -r")
@@ -84,6 +72,8 @@ def test_retain():
     process = subprocess.Popen(clean_retain_pub_cmd, 
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
+
+    time.sleep(1)
     process.terminate()
     if cnt.value != 1:
         print("Retain test failed!")
@@ -91,10 +81,10 @@ def test_retain():
     print("Retain test passed!")
 
 def test_v4_v5():
-    sub_cmd_v4 = shlex.split("mosquitto_sub -t topic -h localhost -p 1883 -V 311")
-    sub_cmd_v5 = shlex.split("mosquitto_sub -t topic -h localhost -p 1883 -V 5")
-    pub_cmd_v4 = shlex.split("mosquitto_pub -m message  -t topic -h localhost -p 1883 -V 311")
-    pub_cmd_v5 = shlex.split("mosquitto_pub -m message  -t topic -h localhost -p 1883 -V 5")
+    sub_cmd_v4 = shlex.split("mosquitto_sub -t topic/v4/v5 -h localhost -p 1883 -V 311")
+    sub_cmd_v5 = shlex.split("mosquitto_sub -t topic/v4/v5 -h localhost -p 1883 -V 5")
+    pub_cmd_v4 = shlex.split("mosquitto_pub -m message  -t topic/v4/v5 -h localhost -p 1883 -V 311")
+    pub_cmd_v5 = shlex.split("mosquitto_pub -m message  -t topic/v4/v5 -h localhost -p 1883 -V 5")
 
     cnt = Value('i', 0)
     process = Process(target=cnt_message, args=(sub_cmd_v4, cnt, "message"))
@@ -159,6 +149,3 @@ if __name__=='__main__':
     test_v4_v5()
     test_clean_session()
     test_retain()
-
-
-
