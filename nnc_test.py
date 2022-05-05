@@ -6,11 +6,15 @@ import os
 import paho.mqtt.client as mqtt
 from multiprocessing import Process, Value
 import time
+import signal
+import os
 
-def cnt_message(cmd, n, message):
+def cnt_message(cmd, n, pid, message):
     process = subprocess.Popen(cmd,
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
+    pid.value = process.pid
+    
     while True:
         output = process.stdout.readline()
         if output.strip() == message:
@@ -39,7 +43,8 @@ def test_clean_session():
     time.sleep(1)
 
     cnt = Value('i', 0)
-    process = Process(target=cnt_message, args=(persist_session_cmd, cnt, "message"))
+    pid = Value('i', 0)
+    process = Process(target=cnt_message, args=(persist_session_cmd, cnt, pid, "message"))
     process.start()
 
     time.sleep(5)
@@ -49,11 +54,14 @@ def test_clean_session():
     else:
         print("clean session test failed!")
 
-    process = Process(target=cnt_message, args=(clean_session_cmd, cnt, "message"))
+    os.kill(pid.value, signal.SIGKILL)
+    pid = Value('i', 0)
+    process = Process(target=cnt_message, args=(clean_session_cmd, cnt, pid, "message"))
     process.start()
 
     time.sleep(1)
     process.terminate()
+    os.kill(pid.value, signal.SIGKILL)
 
 def test_retain():
     retain_pub_cmd = shlex.split("mosquitto_pub -m message  -t topic -h localhost -p 1883 -r")
@@ -64,7 +72,8 @@ def test_retain():
                                universal_newlines=True)
 
     cnt = Value('i', 0)
-    process = Process(target=cnt_message, args=(sub_cmd, cnt, "message"))
+    pid = Value('i', 0)
+    process = Process(target=cnt_message, args=(sub_cmd, cnt, pid, "message"))
     process.start()
     time.sleep(1)
 
@@ -79,6 +88,7 @@ def test_retain():
         print("Retain test failed!")
         return
     print("Retain test passed!")
+    os.kill(pid.value, signal.SIGKILL)
 
 def test_v4_v5():
     sub_cmd_v4 = shlex.split("mosquitto_sub -t topic/v4/v5 -h localhost -p 1883 -V 311")
@@ -87,7 +97,8 @@ def test_v4_v5():
     pub_cmd_v5 = shlex.split("mosquitto_pub -m message  -t topic/v4/v5 -h localhost -p 1883 -V 5")
 
     cnt = Value('i', 0)
-    process = Process(target=cnt_message, args=(sub_cmd_v4, cnt, "message"))
+    pid = Value('i', 0)
+    process = Process(target=cnt_message, args=(sub_cmd_v4, cnt, pid, "message"))
     process.start()
     time.sleep(1)
     process2 = subprocess.Popen(pub_cmd_v5, 
@@ -95,12 +106,14 @@ def test_v4_v5():
                                universal_newlines=True)
     time.sleep(1)
     process.terminate()
+    os.kill(pid.value, signal.SIGKILL)
+    pid = Value('i', 0)
 
     if cnt.value != 1:
         print("V4/V5 test failed!")
         return
 
-    process = Process(target=cnt_message, args=(sub_cmd_v5, cnt, "message"))
+    process = Process(target=cnt_message, args=(sub_cmd_v5, cnt, pid, "message"))
     process.start()
     time.sleep(1)
     process4 = subprocess.Popen(pub_cmd_v4, 
@@ -109,6 +122,8 @@ def test_v4_v5():
 
     time.sleep(1)
     process.terminate()
+    os.kill(pid.value, signal.SIGKILL)
+
     if cnt.value != 2:
         print("V4/V5 test failed!")
         return
@@ -120,7 +135,8 @@ def test_will_topic():
     sub_cmd = shlex.split("mosquitto_sub -t will_topic -h localhost -p 1883")
 
     cnt = Value('i', 0)
-    process = Process(target=cnt_message, args=(sub_cmd, cnt, "will_payload"))
+    pid = Value('i', 0)
+    process = Process(target=cnt_message, args=(sub_cmd, cnt, pid, "will_payload"))
     process.start()
 
     time.sleep(1)
@@ -129,8 +145,6 @@ def test_will_topic():
                                universal_newlines=True)
     time.sleep(1)
     process2.terminate()
-    process2.kill()
-
     times = 0
     while True:
         if cnt.value == 1:
@@ -142,7 +156,7 @@ def test_will_topic():
             print("Will topic test failed!")
             break
     process.terminate()
-
+    os.kill(pid.value, signal.SIGKILL)
 
 if __name__=='__main__':
     test_will_topic()
