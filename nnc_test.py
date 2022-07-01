@@ -9,7 +9,7 @@ import time
 import signal
 import os
 
-g_port = 1885
+g_port = 1883
 g_addr = "127.0.0.1"
 
 g_url = " -h {addr} -p {port} ".format(addr = g_addr, port = g_port)
@@ -28,7 +28,7 @@ def cnt_message(cmd, n, pid, message):
 def test_clean_session():
     clean_session_cmd = shlex.split("mosquitto_sub -t topic {} -q 1".format(g_url))
     persist_session_cmd = shlex.split("mosquitto_sub -t topic {} -c -i id -q 1".format(g_url))
-    pub_cmd = shlex.split("mosquitto_pub -m message  -t topic -q 1".format(g_url))
+    pub_cmd = shlex.split("mosquitto_pub -m message {} -t topic -q 1".format(g_url))
 
     # persistence session
     process = subprocess.Popen(persist_session_cmd, 
