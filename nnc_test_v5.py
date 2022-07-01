@@ -11,7 +11,7 @@ import time
 import threading
 import signal
 
-g_port = 1886
+g_port = 1883
 g_addr = "127.0.0.1"
 
 g_url = " -h {addr} -p {port} ".format(addr = g_addr, port = g_port)
@@ -183,8 +183,8 @@ def test_topic_alias():
 
 
 def test_user_property():
-    pub_cmd = shlex.split("mosquitto_pub -t topic_test -m aaaa -V 5 -D Publish user-property user property".format(g_url))
-    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -V 5 -F %P".format(g_url))
+    pub_cmd = shlex.split("mosquitto_pub -t topic_test {} -m aaaa -V 5 -D Publish user-property user property".format(g_url))
+    sub_cmd = shlex.split("mosquitto_sub -t topic_test {} -V 5 -F %P".format(g_url))
 
     cnt = Value('i', 0)
     pid = Value('i', 0)
