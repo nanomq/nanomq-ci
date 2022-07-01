@@ -11,6 +11,11 @@ import time
 import threading
 import signal
 
+g_port = 1886
+g_addr = "127.0.0.1"
+
+g_url = " -h {addr} -p {port} ".format(addr = g_addr, port = g_port)
+
 cnt = 0
 non_cnt = 0
 shared_cnt = 0
@@ -61,10 +66,10 @@ def cnt_message(cmd, n, pid, message):
             n.value += 1
 
 def test_shared_subscription():
-    pub_cmd = shlex.split("mosquitto_pub -t topic_share -V 5 -m message -h localhost -p 1883 -d --repeat 10")
-    sub_cmd = shlex.split("mosquitto_sub -t '$share/a/topic_share' -h localhost -p 1883")
-    sub_cmd_shared = shlex.split("mosquitto_sub -t '$share/b/topic_share' -h localhost -p 1883")
-    sub_cmd_non_shared = shlex.split("mosquitto_sub -t topic_share -h localhost -p 1883")
+    pub_cmd = shlex.split("mosquitto_pub -t topic_share -V 5 -m message {} -d --repeat 10".format(g_url))
+    sub_cmd = shlex.split("mosquitto_sub -t '$share/a/topic_share' {}".format(g_url))
+    sub_cmd_shared = shlex.split("mosquitto_sub -t '$share/b/topic_share' {}".format(g_url))
+    sub_cmd_non_shared = shlex.split("mosquitto_sub -t topic_share {}".format(g_url))
     process1 = subprocess.Popen(sub_cmd,
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
@@ -150,8 +155,8 @@ def test_shared_subscription():
     print("Shared subscription test passed!")
 
 def test_topic_alias():
-    pub_cmd = shlex.split("mosquitto_pub -t topic -V 5 -m message -D Publish topic-alias 10 -h localhost -p 1883 -d --repeat 10")
-    sub_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883")
+    pub_cmd = shlex.split("mosquitto_pub -t topic -V 5 -m message -D Publish topic-alias 10 {} -d --repeat 10".format(g_url))
+    sub_cmd = shlex.split("mosquitto_sub -t topic {}".format(g_url))
 
     cnt = Value('i', 0)
     pid = Value('i', 0)
@@ -178,8 +183,8 @@ def test_topic_alias():
 
 
 def test_user_property():
-    pub_cmd = shlex.split("mosquitto_pub -h localhost -p 1883 -t topic_test -m aaaa -V 5 -D Publish user-property user property")
-    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -h localhost -p 1883 -V 5 -F %P")
+    pub_cmd = shlex.split("mosquitto_pub -t topic_test -m aaaa -V 5 -D Publish user-property user property".format(g_url))
+    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -V 5 -F %P".format(g_url))
 
     cnt = Value('i', 0)
     pid = Value('i', 0)
@@ -209,8 +214,8 @@ def test_user_property():
         print("User property test passed!")
 
 def test_session_expiry():
-    pub_cmd = shlex.split("mosquitto_pub -h localhost -p 1883 -t topic_test -m message -V 5 -q 1")
-    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -h localhost -p 1883  --id client -x 5 -c -q 1 -V 5")
+    pub_cmd = shlex.split("mosquitto_pub -t topic_test {} -m message -V 5 -q 1".format(g_url))
+    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' {} --id client -x 5 -c -q 1 -V 5".format(g_url))
 
     process1 = subprocess.Popen(sub_cmd,
                                stdout=subprocess.PIPE,
@@ -249,8 +254,8 @@ def test_session_expiry():
         print("Session expiry interval test failed")
 
 def test_message_expiry():
-    pub_cmd = shlex.split("mosquitto_pub -h localhost -p 1883 -t topic_test -m message -V 5 -q 1 -D publish message-expiry-interval 3 -r")
-    sub_cmd = shlex.split("mosquitto_sub -t 'topic_test' -h localhost -p 1883 -q 1 -V 5")
+    pub_cmd = shlex.split("mosquitto_pub -t topic_test {} -m message -V 5 -q 1 -D publish message-expiry-interval 3 -r".format(g_url))
+    sub_cmd = shlex.split("mosquitto_sub -t topic_test {} -q 1 -V 5".format(g_url))
 
     process1 = subprocess.Popen(pub_cmd,
                                stdout=subprocess.PIPE,
@@ -282,10 +287,10 @@ def test_message_expiry():
         print("Message expiry interval test failed!")
 
 def test_retain_as_publish():
-    pub_retain_cmd = shlex.split("mosquitto_pub -t topic -V 5 -m message -d --retain")
-    sub_retain_cmd = shlex.split("mosquitto_sub -t topic -V 5 --retain-as-published -d")
-    sub_common_cmd = shlex.split("mosquitto_sub -t topic -V 5 -d")
-    pub_clean_retain_cmd = shlex.split("mosquitto_pub -t topic -V 5 -m \"\" -d")
+    pub_retain_cmd = shlex.split("mosquitto_pub -t topic {} -V 5 -m message -d --retain".format(g_url))
+    sub_retain_cmd = shlex.split("mosquitto_sub -t topic {} -V 5 --retain-as-published -d".format(g_url))
+    sub_common_cmd = shlex.split("mosquitto_sub -t topic {} -V 5 -d".format(g_url))
+    pub_clean_retain_cmd = shlex.split("mosquitto_pub -t topic {} -V 5 -m \"\" -d".format(g_url))
 
     process1 = subprocess.Popen(pub_retain_cmd,
                                stdout=subprocess.PIPE,

@@ -9,6 +9,11 @@ import time
 import signal
 import os
 
+g_port = 1885
+g_addr = "127.0.0.1"
+
+g_url = " -h {addr} -p {port} ".format(addr = g_addr, port = g_port)
+
 def cnt_message(cmd, n, pid, message):
     process = subprocess.Popen(cmd,
                                stdout=subprocess.PIPE,
@@ -21,9 +26,9 @@ def cnt_message(cmd, n, pid, message):
             n.value += 1
 
 def test_clean_session():
-    clean_session_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883 -q 1")
-    persist_session_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883 -c -i id -q 1")
-    pub_cmd = shlex.split("mosquitto_pub -m message  -t topic -h localhost -p 1883 -q 1")
+    clean_session_cmd = shlex.split("mosquitto_sub -t topic {} -q 1".format(g_url))
+    persist_session_cmd = shlex.split("mosquitto_sub -t topic {} -c -i id -q 1".format(g_url))
+    pub_cmd = shlex.split("mosquitto_pub -m message  -t topic -q 1".format(g_url))
 
     # persistence session
     process = subprocess.Popen(persist_session_cmd, 
@@ -64,9 +69,9 @@ def test_clean_session():
     os.kill(pid.value, signal.SIGKILL)
 
 def test_retain():
-    retain_pub_cmd = shlex.split("mosquitto_pub -m message  -t topic -h localhost -p 1883 -r")
-    clean_retain_pub_cmd = shlex.split("mosquitto_pub -n  -t topic -h localhost -p 1883 -r")
-    sub_cmd = shlex.split("mosquitto_sub -t topic -h localhost -p 1883")
+    retain_pub_cmd = shlex.split("mosquitto_pub -m message {} -t topic -r".format(g_url))
+    clean_retain_pub_cmd = shlex.split("mosquitto_pub -n {} -t topic -r".format(g_url))
+    sub_cmd = shlex.split("mosquitto_sub -t topic {}".format(g_url))
     process = subprocess.Popen(retain_pub_cmd, 
                                stdout=subprocess.PIPE,
                                universal_newlines=True)
@@ -91,10 +96,10 @@ def test_retain():
     os.kill(pid.value, signal.SIGKILL)
 
 def test_v4_v5():
-    sub_cmd_v4 = shlex.split("mosquitto_sub -t topic/v4/v5 -h localhost -p 1883 -V 311")
-    sub_cmd_v5 = shlex.split("mosquitto_sub -t topic/v4/v5 -h localhost -p 1883 -V 5")
-    pub_cmd_v4 = shlex.split("mosquitto_pub -m message  -t topic/v4/v5 -h localhost -p 1883 -V 311")
-    pub_cmd_v5 = shlex.split("mosquitto_pub -m message  -t topic/v4/v5 -h localhost -p 1883 -V 5")
+    sub_cmd_v4 = shlex.split("mosquitto_sub -t topic/v4/v5 {} -V 311".format(g_url))
+    sub_cmd_v5 = shlex.split("mosquitto_sub -t topic/v4/v5 {} -V 5".format(g_url))
+    pub_cmd_v4 = shlex.split("mosquitto_pub -m message  -t topic/v4/v5 {} -V 311".format(g_url))
+    pub_cmd_v5 = shlex.split("mosquitto_pub -m message  -t topic/v4/v5 {} -V 5".format(g_url))
 
     cnt = Value('i', 0)
     pid = Value('i', 0)
@@ -131,8 +136,8 @@ def test_v4_v5():
             
 
 def test_will_topic():
-    pub_cmd = shlex.split("mosquitto_pub -h localhost -p 1883 -t msg -d -l --will-topic will_topic --will-payload will_payload")
-    sub_cmd = shlex.split("mosquitto_sub -t will_topic -h localhost -p 1883")
+    pub_cmd = shlex.split("mosquitto_pub {} -t msg -d -l --will-topic will_topic --will-payload will_payload".format(g_url))
+    sub_cmd = shlex.split("mosquitto_sub -t will_topic {}".format(g_url))
 
     cnt = Value('i', 0)
     pid = Value('i', 0)
