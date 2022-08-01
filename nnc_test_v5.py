@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from cgi import test
 from curses import termattrs
 from operator import is_
