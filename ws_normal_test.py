@@ -34,12 +34,12 @@ class Test(object):
         self._mqttc.on_publish = on_publish
     
 
-    def assert_test(self, send_times, sub, pub):
-        qos = 2
+    def assert_test(self, send_times, _qos, sub, pub):
         global g_send_times
         global g_recv_times
         g_recv_times = 0
         g_send_times = send_times
+        qos = _qos
 
         # test sub
         while qos >= 0:
@@ -50,10 +50,10 @@ class Test(object):
             self._mqttc.publish(pub, pub, 2)
             self._mqttc.loop_forever()
             qos -= 1
-        assert g_send_times * 3 == g_recv_times
+        assert g_send_times * (_qos + 1) == g_recv_times
 
         g_recv_times = 0
-        qos = 2
+        qos = _qos
 
         # test unsub
         while qos >= 0:
@@ -70,12 +70,24 @@ class Test(object):
 
 t1 = Test()
 t1.init(prot=MQTTv311)
-t1.assert_test(3, "test/a/b", "test/a/b")
-t1.assert_test(3, "test/+/+", "test/a/b")
-t1.assert_test(3, "test/a/+", "test/a/b")
-t1.assert_test(3, "test/+/b", "test/a/b")
-t1.assert_test(3, "+/+/b", "test/a/b")
-t1.assert_test(3, "+/a/+", "test/a/b")
-t1.assert_test(3, "+/a/b", "test/a/b")
-t1.assert_test(3, "test/#", "test/a/b")
+t1.assert_test(3, 2, "test/a/b", "test/a/b")
+t1.assert_test(3, 2, "test/+/+", "test/a/b")
+t1.assert_test(3, 2, "test/a/+", "test/a/b")
+t1.assert_test(3, 2, "test/+/b", "test/a/b")
+t1.assert_test(3, 2, "+/+/b", "test/a/b")
+t1.assert_test(3, 2, "+/a/+", "test/a/b")
+t1.assert_test(3, 2, "+/a/b", "test/a/b")
+t1.assert_test(3, 2, "test/#", "test/a/b")
+
+
+t1 = Test()
+t1.init(prot=MQTTv5)
+t1.assert_test(3, 1, "test/a/b", "test/a/b")
+t1.assert_test(3, 1, "test/+/+", "test/a/b")
+t1.assert_test(3, 1, "test/a/+", "test/a/b")
+t1.assert_test(3, 1, "test/+/b", "test/a/b")
+t1.assert_test(3, 1, "+/+/b", "test/a/b")
+t1.assert_test(3, 1, "+/a/+", "test/a/b")
+t1.assert_test(3, 1, "+/a/b", "test/a/b")
+t1.assert_test(3, 1, "test/#", "test/a/b")
 
