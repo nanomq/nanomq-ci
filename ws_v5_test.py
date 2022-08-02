@@ -14,12 +14,21 @@ g_pub_times = 1
 g_sub_times = 0
 
 user_properties = [("filename","test.txt"),("count","1")]
+topic_alias = 10
+
+def on_message_topic_alias(self, obj, msg):
+    print("Receive:" + msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
+    assert msg.topic == str(msg.payload, 'utf-8')
+    if self._protocol == MQTTv5:
+        print("topic alias: " + str(msg.properties.TopicAlias))
+        assert msg.properties.TopicAlias == topic_alias
+    self.disconnect()
 
 def on_message_user_property(self, obj, msg):
     print("Receive:" + msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
     assert msg.topic == str(msg.payload, 'utf-8')
     if self._protocol == MQTTv5:
-        print(msg.properties.UserProperty)
+        print("user property: " + str(msg.properties.UserProperty))
         assert msg.properties.UserProperty == user_properties
     self.disconnect()
 
@@ -49,6 +58,8 @@ def func(proto, cmd, topic, prop=None):
     mqttc = mqtt.Client(transport='websockets', protocol=proto)   
     if "user/property" == topic:
         mqttc.on_message = on_message_user_property
+    elif "topic/alias" == topic:
+        mqttc.on_message = on_message_topic_alias
     else:
         mqttc.on_message = on_message
 
@@ -60,7 +71,7 @@ def func(proto, cmd, topic, prop=None):
     elif proto == MQTTv5:
         mqttc.on_subscribe = on_subscribe_v5
 
-    mqttc.connect("localhost", 8083, 60)
+    mqttc.connect("localhost", 8085, 60)
 
     global g_sub_times
     if proto == MQTTv311:
@@ -107,7 +118,17 @@ def ws_user_properties():
     t2 = Thread(target=func, args=(MQTTv5, "pub", "user/property", properties))
     t2.start()
 
+def ws_topic_alias():
+    properties=Properties(PacketTypes.PUBLISH)
+    properties.TopicAlias=topic_alias
+    t1 = Thread(target=func, args=(MQTTv5, "sub", "topic/alias"))
+    t1.start()
+    t2 = Thread(target=func, args=(MQTTv5, "pub", "topic/alias", properties))
+    t2.start()
+
 
 ws_v4_v5_test()
 
 ws_user_properties()
+
+ws_topic_alias()
